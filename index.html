@@ -1,5 +1,5 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><style>
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}body{-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;user-select:text}.pcover{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center}.pcover img{width:84px;height:84px;border-radius:20px}html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}body{-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;user-select:text}.camwrap{position:relative;border-radius:20px;overflow:hidden;background:#0b1220;aspect-ratio:3/4;max-height:56vh;width:100%}.camwrap video{width:100%;height:100%;object-fit:cover;display:block}.camframe{position:absolute;inset:20%;border:3px solid rgba(255,255,255,.92);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.28)}.camline{position:absolute;left:22%;right:22%;top:24%;height:2px;background:#4ea1ff;box-shadow:0 0 8px #4ea1ff}@media (prefers-reduced-motion:no-preference){.camline{animation:cl 2.2s ease-in-out infinite alternate}@keyframes cl{to{top:74%}}}.pcover{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center}.pcover img{width:84px;height:84px;border-radius:20px}html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 <title>Bua Bank</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -551,8 +551,20 @@ function pageCards(){
 function pageMyQr(){
   return backbar("คิวอาร์ของฉัน")+'<div class="qrbox" id="qrbox"></div><div class="center small muted" style="text-align:center">'+esc(S.name)+' · '+esc(ACC_NO)+'</div><div class="note">คิวอาร์นี้แสดงข้อมูลบัญชีที่ซ่อนบางส่วน ไม่ใช่คิวอาร์รับเงินจริง</div>'
 }
+var camStream=null,camTimer=0;
+function stopCam(){clearTimeout(camTimer);if(camStream){try{camStream.getTracks().forEach(function(t){t.stop()})}catch(e){}camStream=null}}
 function pageScan(){
-  return backbar("สแกน")+'<div class="note">หน้านี้ไม่สามารถเปิดกล้องได้ ใช้การสแกนในแอปบนเครื่องที่อนุญาตการใช้กล้อง</div><div class="grid g2">'+tile("qr","คิวอาร์ของฉัน",'data-go="myqr"')+tile("bill","จ่ายบิล",'data-go="bill"')+'</div>'
+  return backbar("สแกน")+'<div class="camwrap"><video id="cam" playsinline muted autoplay></video><div class="camframe"></div><div class="camline"></div></div><div class="small muted" id="cammsg" style="text-align:center;margin:10px 0">วางคิวอาร์ให้อยู่ในกรอบ</div><button class="btn ghost" id="camretry">สแกนอีกครั้ง</button><div class="grid g2" style="margin-top:12px">'+tile("qr","คิวอาร์ของฉัน",'data-go="myqr"')+tile("bill","จ่ายบิล",'data-go="bill"')+'</div>'
+}
+function startCam(){
+  var v=document.getElementById("cam"),m=document.getElementById("cammsg");
+  function hint(){clearTimeout(camTimer);if(m)m.textContent="วางคิวอาร์ให้อยู่ในกรอบ";camTimer=setTimeout(function(){var c=cur();if(c&&c.name==="scan"){var mm=document.getElementById("cammsg");if(mm)mm.textContent="สแกนไม่สำเร็จ ไม่พบคิวอาร์ที่ใช้งานได้ กรุณาลองใหม่"}},6000)}
+  if(camStream&&v){v.srcObject=camStream;hint();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){if(m)m.textContent="ไม่สามารถเปิดกล้องได้บนอุปกรณ์นี้";return}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false}).then(function(st){
+    var c=cur();if(!c||c.name!=="scan"){st.getTracks().forEach(function(t){t.stop()});return}
+    camStream=st;v=document.getElementById("cam");if(v){v.srcObject=st;try{v.play()}catch(e){}}hint()
+  }).catch(function(){var mm=document.getElementById("cammsg");if(mm)mm.textContent="ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้องในตั้งค่าของเครื่อง"})
 }
 function pageService(p){
   var id=p.id;
@@ -581,6 +593,7 @@ function renderMain(){
     });
     bar+='</nav></div>'
   }
+  if(!(c&&c.name==="scan"))stopCam();
   $app.innerHTML='<div class="screen">'+h+'</div>'+bar;
   bindMain(c)
 }
@@ -610,6 +623,7 @@ function bindMain(c){
   if(!c)return;
   var n=c.name;
   if(n==="xfer"||n==="topup"||n==="bill"||n==="cardless")bindForm(n,c.p);
+  if(n==="scan"){startCam();on("#camretry",function(){var m=document.getElementById("cammsg");if(m)m.textContent="กำลังสแกน...";clearTimeout(camTimer);camTimer=setTimeout(function(){var c2=cur();if(c2&&c2.name==="scan"){var mm=document.getElementById("cammsg");if(mm)mm.textContent="สแกนไม่สำเร็จ ไม่พบคิวอาร์ที่ใช้งานได้ กรุณาลองใหม่"}},3500)})}
   if(n==="fav"){
     on("#fgo",function(){
       var b=document.getElementById("fb").value,no=document.getElementById("fn").value.replace(/\D/g,""),nm=document.getElementById("fm").value.trim(),e=document.getElementById("ferr");
