@@ -1,4 +1,5 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><style>
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}body{-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;user-select:text}.pcover{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center}.pcover img{width:84px;height:84px;border-radius:20px}html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 <title>Bua Bank</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -80,6 +81,12 @@ input.amount{font-size:28px;font-weight:600;padding:14px}
 .ico.in{background:color-mix(in srgb,var(--in) 16%,transparent);color:var(--in)}
 .ico.out{background:color-mix(in srgb,var(--out) 16%,transparent);color:var(--out)}
 .day{font-size:13px;font-weight:600;color:var(--muted);padding:6px 2px 0}
+.mchips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mchips::-webkit-scrollbar{display:none}
+.mchips button{flex:none;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--muted);font-weight:500}
+.mchips button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--brand);margin:0 auto 12px}
+@media (prefers-reduced-motion:no-preference){.spin{animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}}
 .seg{display:flex;background:var(--surface2);border-radius:12px;padding:3px;gap:3px}
 .seg button{flex:1;padding:8px 4px;border-radius:9px;font-size:14px;color:var(--muted);font-weight:500;white-space:nowrap;text-align:center}
 .seg button.on{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
@@ -107,7 +114,7 @@ input.amount{font-size:28px;font-weight:600;padding:14px}
 .ok .tick{width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--in) 18%,transparent);color:var(--in);display:grid;place-items:center}
 .ok .tick.no{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
 .ok .tick svg{width:34px;height:34px}
-.tag{font-size:9px;color:var(--muted);opacity:.75;letter-spacing:.02em}
+.tag{display:inline;font-size:6px;line-height:1;color:var(--muted);opacity:.4;margin-left:3px;vertical-align:baseline;-webkit-text-size-adjust:none;text-size-adjust:none}
 .sw{position:relative;width:48px;height:28px;border-radius:14px;background:var(--line);flex:none;transition:background .15s}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .15s}
 .sw.on{background:var(--brand)} .sw.on::after{transform:translateX(20px)}
@@ -126,8 +133,11 @@ var ICON="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAABi
 var KEY="bua.web.v1",PIN_LEN=6,MAX=1000000000,INITIAL=30000000,TARGET=30104500,DEFAULT_NAME="ศุภาพิชญ์",ACC_NO="967-x-xxxxx-x";
 var S=null,mem=null;
 var view="",tab="home",nav=[],sheet=null,setup={step:"pin",name:DEFAULT_NAME,first:""},pin="",msg="";
-var filter="all",stmt={acc:null,period:"this"},tmp={};
+var filter="all",stmt={acc:null,m:null,loading:false,fail:false},tmp={};
 var $app;
+document.addEventListener("gesturestart",function(e){e.preventDefault()});document.addEventListener("gesturechange",function(e){e.preventDefault()});
+(function(){var lt=0;document.addEventListener("touchend",function(e){var n=Date.now();if(n-lt<350&&!(e.target.closest&&e.target.closest("input,textarea,select")))e.preventDefault();lt=n},{passive:false})})();
+(function(){function on(){if(document.getElementById("pcover"))return;var d=document.createElement("div");d.id="pcover";d.className="pcover";d.innerHTML='<img src="'+ICON+'" alt="">';document.body.appendChild(d)}function off(){var d=document.getElementById("pcover");if(d)d.remove()}document.addEventListener("visibilitychange",function(){document.hidden?on():off()});window.addEventListener("pagehide",on);window.addEventListener("pageshow",off);window.addEventListener("blur",on);window.addEventListener("focus",off)})();
 
 /* ---------- storage ---------- */
 function load(){try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return mem}
@@ -149,7 +159,7 @@ function hash(p,salt){
   var h=5381;for(var i=0;i<data.length;i++){h=((h<<5)+h+data[i])|0}
   return Promise.resolve("f"+h)
 }
-var TYPES={deposit:{t:"ฝากเงิน",in:true},withdraw:{t:"ถอนเงิน",in:false},bill:{t:"จ่ายบิล",in:false},topup:{t:"เติมเงิน",in:false}};
+var TYPES={deposit:{t:"ฝากเงิน",in:true},withdraw:{t:"ถอนเงิน",in:false},bill:{t:"จ่ายบิล",in:false},topup:{t:"เติมเงิน",in:false},rcv:{t:"รับโอนเงิน",in:true},pay:{t:"ชำระเงิน",in:false},atm:{t:"ถอนเงินสด",in:false}};
 var P={
  home:"M3 11l9-8 9 8M5 10v10h14V10",
  acct:"M4 7h16M4 12h16M4 17h10",
@@ -189,7 +199,7 @@ var P={
  link:"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"
 };
 function ic(n){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+(P[n]||P.info)+'"/></svg>'}
-var TICO={deposit:"down",withdraw:"up",bill:"bill",topup:"phone"};
+var TICO={deposit:"down",withdraw:"up",bill:"bill",topup:"phone",rcv:"down",pay:"up",atm:"atm"};
 
 /* ---------- data ops ---------- */
 function freshData(){
@@ -203,28 +213,41 @@ function noteHtml(n){var tag=" · ข้อมูลตัวอย่าง",ha
 
 /* ---------- sample data for development (current month only) ---------- */
 function seedSample(){
-  var d=freshData(),A=d.accounts,a=A[0],tx=[],now=Date.now(),TAG=" · ข้อมูลตัวอย่าง",Y=new Date().getFullYear(),M=new Date().getMonth();
+  var d=freshData(),A=d.accounts,a=A[0],tx=[],now=Date.now(),TAG=" · ข้อมูลตัวอย่าง",Y=new Date().getFullYear(),M=new Date().getMonth(),nm=(S&&S.name)||DEFAULT_NAME;
   function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
   function rnd(lo,hi){return Math.round((lo+Math.random()*(hi-lo))*100)}
-  function add(type,amt,when,note){when=Math.min(when,now-1000);a.bal+=type==="deposit"?amt:-amt;tx.push({id:uid(),ts:when,type:type,amt:amt,acc:a.id,cp:null,note:note+TAG,after:a.bal})}
+  function rnd100(lo,hi){return Math.round((lo+Math.random()*(hi-lo))/100)*10000}
+  function add(type,amt,when,note){when=Math.min(when,now-1000);a.bal+=TYPES[type].in?amt:-amt;tx.push({id:uid(),ts:when,type:type,amt:amt,acc:a.id,cp:null,note:note+TAG,after:a.bal})}
   a.bal=0;
-  add("deposit",INITIAL,new Date(Y,M,1,9,12).getTime(),"เงินฝากเริ่มต้น");
-  var days=Math.max(2,new Date(now).getDate()-1),n=days>=12?5:days>=6?4:2;
-  var spend=[["ชำระเงิน ร้านอาหาร",180,650],["ชำระเงิน ร้านสะดวกซื้อ",90,420],["ค่าโทรศัพท์",299,499],["ค่าไฟ",650,1250],["ชำระเงิน ร้านกาแฟ",70,160],["ค่าน้ำ",140,320],["ชำระเงิน ร้านค้า",250,1400]];
-  var order=spend.slice().sort(function(){return Math.random()-0.5}).slice(0,n),ds=[];
-  for(var i=0;i<n;i++)ds.push(2+Math.floor(Math.random()*Math.max(1,days-1)));
-  ds.sort(function(x,y){return x-y});
-  var items=ds.map(function(dd,k){return {d:dd,type:"withdraw",amt:rnd(order[k][1],order[k][2]),note:order[k][0]}});
+  add("deposit",INITIAL,new Date(Y,M,1,9,12).getTime(),"ฝากเงินสด สาขา");
+  var days=Math.max(2,new Date(now).getDate()-1),n=days>=15?11:days>=8?8:days>=4?4:2;
+  var pool=[
+    {type:"pay",note:"",lo:80,hi:420},{type:"pay",note:"",lo:120,hi:560},
+    {type:"pay",note:"",lo:55,hi:140},{type:"pay",note:"",lo:35,hi:260},
+    {type:"pay",note:"",lo:180,hi:950},{type:"pay",note:"",lo:199,hi:1290},
+    {type:"pay",note:"",lo:35,hi:220},{type:"atm",note:"",lo:500,hi:3000,r:1},
+    {type:"topup",note:"",lo:100,hi:300,r:1}];
+  var fixed=[{type:"bill",note:"ค่าไฟฟ้า",lo:520,hi:1180},{type:"bill",note:"ค่าน้ำประปา",lo:130,hi:290},{type:"bill",note:"อินเทอร์เน็ตบ้าน",lo:399,hi:599}];
+  var chosen=fixed.slice(0,Math.min(fixed.length,Math.max(1,Math.floor(n/3))));
+  while(chosen.length<n)chosen.push(pick(pool));
+  var ds=chosen.map(function(){return 2+Math.floor(Math.random()*Math.max(1,days-1))});ds.sort(function(x,y){return x-y});
+  chosen.sort(function(){return Math.random()-0.5});
+  var items=chosen.map(function(c,k){return {d:ds[k],type:c.type,amt:c.r?rnd100(c.lo,c.hi):rnd(c.lo,c.hi),note:c.note}});
   var exp=0;items.forEach(function(it){exp+=it.amt});
-  var inc=TARGET-INITIAL+exp,incDay=Math.min(days,Math.max(5,Math.floor(days*0.5))),nm=(S&&S.name)||DEFAULT_NAME;
-  if(inc>0)items.push({d:incDay,type:"deposit",amt:inc,note:"โอนเข้าจาก "+nm});
+  var inc=TARGET-INITIAL+exp;
+  if(inc>0){
+    var i1=Math.floor(inc*0.62/100)*100,i2=inc-i1;
+    items.push({d:Math.min(days,5+Math.floor(Math.random()*4)),type:"rcv",amt:i1,note:"จาก "+nm+" · พร้อมเพย์"});
+    if(days>=12&&i2>0)items.push({d:Math.min(days,12+Math.floor(Math.random()*5)),type:"rcv",amt:i2,note:"จาก "+nm+" · พร้อมเพย์"});
+    else if(i2>0)items[items.length-1].amt+=i2;
+  }
   items.sort(function(x,y){return x.d-y.d});
   items.forEach(function(it){add(it.type,it.amt,new Date(Y,M,it.d,8+Math.floor(Math.random()*13),Math.floor(Math.random()*60)).getTime(),it.note)});
   var diff=TARGET-a.bal;
-  if(diff!==0){add(diff>0?"deposit":"withdraw",Math.abs(diff),now-60000,diff>0?"โอนเข้าจาก "+nm:"ชำระเงิน ร้านอาหาร")}
+  if(diff!==0){add(diff>0?"rcv":"pay",Math.abs(diff),now-60000,diff>0?"จาก "+nm+" · พร้อมเพย์":"")}
   tx.sort(function(x,y){return x.ts-y.ts});
-  var b=0;tx.forEach(function(t){b+=t.type==="deposit"?t.amt:-t.amt;t.after=b});
-  S.accounts=A;a.bal=b;S.tx=tx.reverse();S.seed=2;save()
+  var b=0;tx.forEach(function(t){b+=TYPES[t.type].in?t.amt:-t.amt;t.after=b});
+  S.accounts=A;a.bal=b;S.tx=tx.reverse();S.seed=4;save()
 }
 
 /* ---------- navigation ---------- */
@@ -307,10 +330,8 @@ function tabHome(){
   var h=header()+acctCard()+'<div class="grid">'+
     tile("send","โอนเงิน",'data-go="transfer"')+tile("phone","เติมเงิน",'data-go="topup"')+tile("atm","ถอนเงินไม่ใช้บัตร",'data-go="cardless"')+
     tile("bill","จ่ายบิล",'data-go="bill"')+tile("clock","ประวัติธุรกรรม",'data-go="history"')+tile("more","อื่นๆ",'data-tab="more"')+'</div>'+
-    '<div class="grid g2"><button class="tile" data-s="deposit">'+ic("down")+'<span>ฝากเงิน</span></button><button class="tile" data-s="withdraw">'+ic("up")+'<span>ถอนเงิน</span></button></div>'+
-    '<h2>รายการล่าสุด</h2><ul class="list card">';
-  S.tx.slice(0,4).forEach(function(t){h+=txRow(t,true)});
-  return h+'</ul><button class="btn ghost" data-go="history">ดูประวัติทั้งหมด</button>'
+    '<div class="grid g2"><button class="tile" data-s="deposit">'+ic("down")+'<span>ฝากเงิน</span></button><button class="tile" data-s="withdraw">'+ic("up")+'<span>ถอนเงิน</span></button></div>';
+  return h
 }
 function tabAccounts(){
   var a=A0(),lock=!!S.lockApp;
@@ -318,9 +339,8 @@ function tabAccounts(){
    '<div class="card"><div class="row"><div class="grow muted">ประเภทบัญชี</div><div class="ttl">ออมทรัพย์</div></div>'+
    '<div class="row"><div class="grow muted">ยอดคงเหลือ</div><div class="ttl num">'+money(a.bal)+'</div></div>'+
    '<div class="row"><div class="grow"><div class="ttl">ล็อกการ โอน / เติม / จ่าย ผ่านแอป</div><div class="xs muted">เปิดใช้งานเพื่อป้องกันเงินออกจากบัญชีนี้</div></div><button class="sw'+(lock?" on":"")+'" id="lockapp" aria-label="ล็อกการทำรายการ"></button></div>'+
-   '<button class="row" data-go="cards"><div class="grow"><div class="ttl">บัตรเดบิต</div><div class="xs muted">จัดการบัตรและการใช้งาน</div></div><div class="ico">'+ic("card")+'</div></button></div>'+
-   '<h2>รายการล่าสุด</h2><ul class="list card">'+S.tx.slice(0,5).map(function(t){return txRow(t,true)}).join("")+'</ul>'+
-   '<button class="btn ghost" data-go="history">ดูรายการทั้งหมด</button>'
+   '<button class="row" data-go="cards"><div class="grow"><div class="ttl">บัตรเดบิต</div><div class="xs muted">จัดการบัตรและการใช้งาน</div></div><div class="ico">'+ic("card")+'</div></button>'+
+   '<button class="row" data-go="history"><div class="grow"><div class="ttl">ประวัติธุรกรรม</div><div class="xs muted">ดูรายการเข้า-ออกของบัญชี</div></div><div class="ico">'+ic("clock")+'</div></button></div>'
 }
 function tabInvest(){
   return '<h1>การลงทุน</h1><div class="note">คุณยังไม่มีสินทรัพย์ในพอร์ตการลงทุน เลือกประเภทที่สนใจเพื่อดูรายละเอียด</div><div class="grid g2">'+
@@ -388,13 +408,24 @@ function tabMore(){
 
 /* ---------- page screens ---------- */
 function field(id,label,ph,attrs){return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="text" placeholder="'+(ph||"")+'" autocomplete="off" '+(attrs||"")+'></div>'}
+var BANKS=["ธนาคารกรุงไทย","ธนาคารกสิกรไทย","ธนาคารไทยพาณิชย์","ธนาคารกรุงเทพ","ธนาคารกรุงศรีอยุธยา","ธนาคารทหารไทยธนชาต","ธนาคารออมสิน","ธนาคารยูโอบี","ธนาคารซีไอเอ็มบี ไทย","ธนาคารอาคารสงเคราะห์","ธนาคารเพื่อการเกษตรฯ (ธ.ก.ส.)","ธนาคารอื่นๆ"];
+function favs(){return (S&&S.favs)||[]}
+function pageFav(){
+  var h=backbar("รายการโปรด"),L=favs();
+  h+='<div class="card" style="padding:14px"><div class="ttl" style="margin-bottom:8px">เพิ่มรายการโปรด</div><div class="field"><label for="fb">ธนาคาร</label><select id="fb">'+BANKS.map(function(b){return '<option>'+b+'</option>'}).join("")+'</select></div>'+field("fn","เลขที่บัญชี","เลขบัญชี",'inputmode="numeric" maxlength="15"')+field("fm","ชื่อบัญชี / ชื่อเล่น","ชื่อผู้รับ",'maxlength="40"')+'<div class="err" id="ferr"></div><button class="btn" id="fgo">บันทึกรายการโปรด</button></div>';
+  if(!L.length)return h+'<div class="muted" style="padding-top:12px">ยังไม่มีรายการโปรด</div>';
+  h+='<div class="day">รายการโปรดของฉัน</div><ul class="list card">';
+  L.forEach(function(f){h+='<li class="row"><div class="ico">'+ic("user")+'</div><div class="grow"><div class="ttl">'+esc(f.name)+'</div><div class="xs muted">'+esc(f.bank)+' · '+esc(f.no)+'</div></div><button class="x" data-fd="'+f.id+'" aria-label="ลบ">✕</button></li>'});
+  return h+"</ul>"
+}
 function pageTransfer(){
-  return backbar("โอนเงิน")+'<div class="grid g2" style="grid-template-columns:1fr">'+
+  return backbar("โอนเงิน")+'<div class="grid g2" style="grid-template-columns:1fr">'+tile("user","รายการโปรด",'data-go="fav"',true)+
    tile("send","โอนไปบัญชีอื่น",'data-go="xfer" data-mode="acct"',true)+tile("link","โอนด้วยพร้อมเพย์",'data-go="xfer" data-mode="pp"',true)+tile("globe","โอนเงินระหว่างประเทศ",'data-go="xfer" data-mode="intl"',true)+'</div>'
 }
 function pageXfer(p){
   var m=p.mode,t=m==="pp"?"โอนด้วยพร้อมเพย์":m==="intl"?"โอนเงินระหว่างประเทศ":"โอนไปบัญชีอื่น";
   var h=backbar(t)+'<div class="card" style="padding:14px"><div class="small muted">จากบัญชี</div><div class="ttl">'+esc(A0().name)+' · '+esc(A0().number)+'</div><div class="small muted num">ยอดที่ใช้ได้ '+money(A0().bal)+'</div></div>';
+  if(m==="acct"&&favs().length){h+='<div class="small muted" style="margin:4px 0 6px">เลือกจากรายการโปรด</div><div class="mchips">'+favs().map(function(f){return '<button data-fv="'+f.id+'">'+esc(f.name)+'</button>'}).join("")+'</div>'}
   if(m==="acct")h+=field("x1","ธนาคารปลายทาง","ชื่อธนาคาร")+field("x2","เลขที่บัญชีปลายทาง","เลขบัญชี",'inputmode="numeric"');
   if(m==="pp")h+=field("x2","เบอร์มือถือ หรือเลขบัตรประชาชน","เบอร์มือถือ / เลขบัตร",'inputmode="numeric"');
   if(m==="intl")h+=field("x1","ประเทศปลายทาง","ประเทศ")+field("x2","เลขที่บัญชี / IBAN ผู้รับ","เลขบัญชีผู้รับ");
@@ -432,13 +463,14 @@ function pageHistory(){
   list.forEach(function(t){var d=new Date(t.ts).toDateString();if(d!==c){if(open)h+="</ul>";c=d;h+='<div class="day">'+dFull(t.ts)+'</div><ul class="list card">';open=true}h+=txRow(t,false)});
   return h+"</ul>"
 }
-function periodRange(p){
-  var n=new Date(),ms=new Date(n.getFullYear(),n.getMonth(),1).getTime(),end=Date.now()+1;
-  if(p==="this")return{s:ms,e:end};
-  if(p==="last")return{s:new Date(n.getFullYear(),n.getMonth()-1,1).getTime(),e:ms};
-  if(p==="three")return{s:new Date(n.getFullYear(),n.getMonth()-2,1).getTime(),e:end};
-  return{s:null,e:end}
+function monthList(){
+  var n=new Date(),out=[];
+  for(var k=11;k>=0;k--){var d=new Date(n.getFullYear(),n.getMonth()-k,1);out.push({key:d.getFullYear()+"-"+d.getMonth(),y:d.getFullYear(),m:d.getMonth(),s:d.getTime(),e:new Date(d.getFullYear(),d.getMonth()+1,1).getTime(),label:d.toLocaleDateString("th-TH",{month:"short",year:"2-digit"})})}
+  return out
 }
+function curMonth(){var L=monthList(),k=stmt.m||L[L.length-1].key;return L.filter(function(x){return x.key===k})[0]||L[L.length-1]}
+function monthHasData(M){return S.tx.some(function(t){return t.ts>=M.s&&t.ts<M.e})}
+function periodRange(){var M=curMonth();return{s:M.s,e:Math.min(M.e,Date.now()+1)}}
 function stmtData(){
   var r=periodRange(stmt.period),all=S.tx.slice().reverse();
   var ent=all.filter(function(t){return(r.s===null||t.ts>=r.s)&&t.ts<r.e});
@@ -447,14 +479,23 @@ function stmtData(){
   return{ent:ent,open:open,close:ent.length?ent[ent.length-1].after:open,tin:tin,tout:tout}
 }
 function pageStatement(){
-  var PP={this:"เดือนนี้",last:"เดือนที่แล้ว",three:"3 เดือน",all:"ทั้งหมด"},d=stmtData();
-  var h=backbar("ขอรายการเดินบัญชี")+'<div class="card" style="padding:12px 14px"><div class="ttl">'+esc(A0().name)+'</div><div class="xs muted num">'+esc(A0().number)+'</div></div><div class="seg">';
-  Object.keys(PP).forEach(function(k){h+='<button data-p="'+k+'" class="'+(stmt.period===k?"on":"")+'">'+PP[k]+'</button>'});
-  h+='</div><div class="sum num"><div><span class="xs muted">ยอดยกมา</span><b>'+baht(d.open)+'</b></div><div><span class="xs muted">ยอดคงเหลือ</span><b>'+baht(d.close)+'</b></div>'+
+  var L=monthList(),M=curMonth(),has=monthHasData(M);
+  var h=backbar("ขอรายการเดินบัญชี")+'<div class="card" style="padding:12px 14px"><div class="ttl">'+esc(A0().name)+'</div><div class="xs muted num">'+esc(A0().number)+'</div></div><div class="mchips">';
+  L.forEach(function(x){h+='<button data-m="'+x.key+'" class="'+(x.key===M.key?"on":"")+'">'+x.label+'</button>'});
+  h+='</div>';
+  if(!has){
+    if(stmt.loading)return h+'<div class="card" style="padding:36px 16px;text-align:center"><div class="spin"></div><div class="muted">กำลังโหลดข้อมูล...</div></div>';
+    return h+'<div class="card" style="padding:32px 16px;text-align:center"><div class="ttl" style="margin-bottom:6px">โหลดข้อมูลไม่สำเร็จ</div><div class="xs muted" style="margin-bottom:14px">ไม่สามารถดึงรายการของเดือนนี้ได้ในขณะนี้ กรุณาลองใหม่อีกครั้งภายหลัง</div><button class="btn ghost" id="retry">ลองอีกครั้ง</button></div>'
+  }
+  var d=stmtData();
+  h+='<div class="sum num"><div><span class="xs muted">ยอดยกมา</span><b>'+baht(d.open)+'</b></div><div><span class="xs muted">ยอดคงเหลือ</span><b>'+baht(d.close)+'</b></div>'+
    '<div><span class="xs muted">เงินเข้ารวม</span><b class="in">'+baht(d.tin)+'</b></div><div><span class="xs muted">เงินออกรวม</span><b class="out">'+baht(d.tout)+'</b></div></div><ul class="list card">';
-  if(!d.ent.length)h+='<li class="row muted">ไม่มีรายการในช่วงนี้</li>';
   d.ent.slice().reverse().forEach(function(t){h+=txRow(t,true)});
   return h+'</ul><button class="btn ghost" id="copyst">คัดลอกสเตตเมนต์เป็นข้อความ</button><div class="xs muted" id="copymsg">สเตตเมนต์สร้างจากประวัติธุรกรรมในแอป ไม่สามารถแก้ไขย้อนหลังได้</div>'
+}
+function stmtLoad(){
+  var key=curMonth().key;stmt.loading=true;stmt.fail=false;render();
+  setTimeout(function(){if(curMonth().key===key){stmt.loading=false;stmt.fail=true;var c=cur();if(c&&c.name==="statement")render()}},1100)
 }
 function stmtText(){
   var d=stmtData(),a=A0(),L=["สเตตเมนต์บัญชี","ชื่อ: "+S.name,"บัญชี: "+a.name+" "+a.number,"ยอดยกมา "+baht(d.open)+" | เข้า "+baht(d.tin)+" | ออก "+baht(d.tout)+" | คงเหลือ "+baht(d.close),""];
@@ -523,7 +564,7 @@ function renderMain(){
   var c=cur(),h="",withTabs=true;
   if(c){
     withTabs=false;
-    var m={transfer:pageTransfer,xfer:pageXfer,topup:pageTopup,bill:pageBill,cardless:pageCardless,history:pageHistory,statement:pageStatement,notif:pageNotif,settings:pageSettings,
+    var m={transfer:pageTransfer,xfer:pageXfer,topup:pageTopup,bill:pageBill,cardless:pageCardless,history:pageHistory,statement:pageStatement,fav:pageFav,notif:pageNotif,settings:pageSettings,
       profile:pageProfile,verify:pageVerify,kyc:pageKyc,general:pageGeneral,notifset:pageNotifset,lang:pageLang,devices:pageDevices,changepin:pageChangePin,pp:pagePP,cards:pageCards,myqr:pageMyQr,scan:pageScan,service:pageService};
     h=(m[c.name]||pageService)(c.p);
     if(c.name==="notif"){S.seen=Date.now();save()}
@@ -553,7 +594,9 @@ function bindMain(c){
   on("#eye",function(){S.hide=(S.hide===false);save();render()});
   on("#lockapp",function(){S.lockApp=!S.lockApp;save();render()});
   on("[data-f]",function(el){filter=el.dataset.f;render()});
-  on("[data-p]",function(el){stmt.period=el.dataset.p;render()});
+  on("[data-m]",function(el){stmt.m=el.dataset.m;if(monthHasData(curMonth())){stmt.loading=false;render()}else stmtLoad()});
+  on("#retry",stmtLoad);
+  (function(){var mc=document.querySelector(".mchips");if(mc){var o=mc.querySelector(".on");if(o)mc.scrollLeft=Math.max(0,o.offsetLeft-mc.clientWidth+o.offsetWidth+16)}})();
   on("[data-sw]",function(el){var k=el.dataset.sw;if(k==="showbal"){S.hide=(S.hide===false)}else{S[k]=!S[k]}save();render()});
   on("#lo",function(){view="login";pin="";msg="";nav=[];render()});
   on("#sd",function(){sheet={kind:"seed"};renderSheet()});
@@ -567,6 +610,17 @@ function bindMain(c){
   if(!c)return;
   var n=c.name;
   if(n==="xfer"||n==="topup"||n==="bill"||n==="cardless")bindForm(n,c.p);
+  if(n==="fav"){
+    on("#fgo",function(){
+      var b=document.getElementById("fb").value,no=document.getElementById("fn").value.replace(/\D/g,""),nm=document.getElementById("fm").value.trim(),e=document.getElementById("ferr");
+      if(no.length<10||no.length>15){e.textContent="กรุณากรอกเลขบัญชี 10–15 หลัก";return}
+      if(!nm){e.textContent="กรุณากรอกชื่อผู้รับ";return}
+      if(favs().length>=30){e.textContent="เพิ่มได้สูงสุด 30 รายการ";return}
+      if(!S.favs)S.favs=[];S.favs.push({id:uid(),bank:b,no:no,name:nm});save();render()
+    });
+    on("[data-fd]",function(el){S.favs=favs().filter(function(f){return f.id!==el.dataset.fd});save();render()})
+  }
+  if(n==="xfer")on("[data-fv]",function(el){var f=favs().filter(function(x){return x.id===el.dataset.fv})[0];if(!f)return;document.getElementById("x1").value=f.bank;document.getElementById("x2").value=f.no;document.getElementById("x2").dispatchEvent(new Event("input"))});
   if(n==="profile")on("#pnsave",function(){var v=document.getElementById("pn").value.trim();if(!v)return;S.name=v;save();document.getElementById("pnmsg").textContent="บันทึกแล้ว"});
   if(n==="changepin")on("#pgo",function(){
     var a=document.getElementById("p0").value,b=document.getElementById("p1").value,d=document.getElementById("p2").value,e=document.getElementById("pe");
@@ -670,7 +724,7 @@ function render(){
 }
 $app=document.getElementById("app");
 S=load();
-if(S&&S.accounts&&S.ver===3&&S.accounts.length===1&&S.seed!==2&&S.tx.every(function(t){return (t.note||"").indexOf("ข้อมูลตัวอย่าง")>-1||t.note==="เงินฝากเริ่มต้น"})){seedSample()}
+if(S&&S.accounts&&S.ver===3&&S.accounts.length===1&&S.seed!==4&&S.tx.every(function(t){return (t.note||"").indexOf("ข้อมูลตัวอย่าง")>-1||t.note==="เงินฝากเริ่มต้น"})){seedSample()}
 if(S&&S.accounts&&(S.accounts.length>1||S.ver!==3)){var had=S.tx.some(function(t){return (t.note||"").indexOf("ข้อมูลตัวอย่าง")>-1}),fd=freshData();S.accounts=fd.accounts;S.tx=fd.tx;S.ver=3;if(had)seedSample();save()}
 if(S&&S.seen===undefined){S.seen=Date.now();save()}
 view=S?"login":"setup";
